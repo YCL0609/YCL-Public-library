@@ -2,57 +2,83 @@
 
 import terser from '@rollup/plugin-terser';
 
-// 用于 UMD 格式的临时全局变量名，避免命名冲突
+// 临时全局变量名
 const TEMP_GLOBAL_NAME = '__YCL_GLOBAL_EXPORTS__';
-// Banner 内容
+// Banner 文字
 const bannerText = `/*!
  * YCL public function Library by @YCL with MIT License
  * Built: ${new Date().toISOString().slice(0, 10)}
  */`;
 
-export default {
-    input: 'src/index.js',
-
-    output: {
-        file: 'dist/function.bundle.min.js',
-
-        // 格式：umd (通用模块定义)，保证最大兼容性
-        format: 'umd',
-
-        // 临时挂载名：Rollup 将导出的对象赋给 window.__YCL_GLOBAL_EXPORTS__
-        name: TEMP_GLOBAL_NAME,
-
-        // 确保导出所有 API
-        exports: 'named',
-
-        // 添加Banner
-        banner: bannerText,
-
-        // 通过 footer 注入全局挂载代码
-        footer: `
-            (function () {
-                if (typeof window === 'undefined') return;
-                var exports = window['${TEMP_GLOBAL_NAME}'];
-                if (exports) {
-                    for (var key in exports) {
-                        if (exports.hasOwnProperty(key)) {
-                            window[key] = exports[key];
-                        }
-                    }
-                    delete window['${TEMP_GLOBAL_NAME}'];
-                }
-            })();
-        `,
-    },
-
-    plugins: [
-        terser({
-            compress: {
-                passes: 2 // 压缩
-            },
-            format: {
-                comments: /^\!/, // 保持Banner
+// UMD footer 代码
+const umdFooter = `
+(function () {
+    if (typeof window === 'undefined') return;
+    var exports = window['${TEMP_GLOBAL_NAME}'];
+    if (exports) {
+        for (var key in exports) {
+            if (exports.hasOwnProperty(key)) {
+                window[key] = exports[key];
             }
-        })
-    ]
-};
+        }
+        delete window['${TEMP_GLOBAL_NAME}'];
+    }
+})();
+`;
+
+// 压缩插件配置
+const terserPlugin = terser({
+    compress: { passes: 2 },
+    format: { comments: /^\!/ }
+});
+
+export default [
+    // UMD 压缩版
+    {
+        input: 'src/index.umd.js',
+        output: {
+            file: 'dist/function.bundle.min.js',
+            format: 'umd',
+            name: TEMP_GLOBAL_NAME,
+            exports: 'named',
+            banner: bannerText,
+            footer: umdFooter,
+        },
+        plugins: [terserPlugin]
+    },
+    // UMD 未压缩版
+    {
+        input: 'src/index.umd.js',
+        output: {
+            file: 'dist/function.bundle.js',
+            format: 'umd',
+            name: TEMP_GLOBAL_NAME,
+            exports: 'named',
+            banner: bannerText,
+            footer: umdFooter,
+        },
+        plugins: []
+    },
+    // ESM 压缩版
+    {
+        input: 'src/index.esm.js',
+        output: {
+            file: 'dist/function.esm.min.js',
+            format: 'es',
+            exports: 'named',
+            banner: bannerText,
+        },
+        plugins: [terserPlugin]
+    },
+    // ESM 未压缩版
+    {
+        input: 'src/index.esm.js',
+        output: {
+            file: 'dist/function.esm.js',
+            format: 'es',
+            exports: 'named',
+            banner: bannerText,
+        },
+        plugins: []
+    }
+];
