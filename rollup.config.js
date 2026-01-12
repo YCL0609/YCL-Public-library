@@ -37,7 +37,7 @@ export default [
     {
         input: 'src/index.umd.js',
         output: {
-            file: 'dist/function.bundle.min.js',
+            file: 'dist/function.umd.min.js',
             format: 'umd',
             name: TEMP_GLOBAL_NAME,
             exports: 'named',
@@ -50,7 +50,7 @@ export default [
     {
         input: 'src/index.umd.js',
         output: {
-            file: 'dist/function.bundle.js',
+            file: 'dist/function.umd.js',
             format: 'umd',
             name: TEMP_GLOBAL_NAME,
             exports: 'named',
