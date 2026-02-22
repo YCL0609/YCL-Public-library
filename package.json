@@ -1,9 +1,10 @@
 {
   "devDependencies": {
     "@rollup/plugin-terser": "^0.4.4",
-    "rollup": "^4.55.1"
+    "rollup": "^4.59.0"
   },
   "author": "YCL <email@ycl.cool>",
+  "type": "module",
   "license": "MIT",
   "scripts": {
     "build": "npx rollup -c"

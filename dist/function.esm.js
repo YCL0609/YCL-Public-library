@@ -1,31 +1,69 @@
 /*!
  * YCL public function Library by @YCL with MIT License
- * Built: 2026-01-12
+ * Built: 2026-02-22
  */
 /**
  * 检查是否处于调试模式
  * @returns {boolean} 是否处于调试模式
  */
-function isDebug() {
-    const urldebug = (getUrlParams('debug') !== undefined);
-    const hostdebug = /^localhost|^127(?:\.0(?:\.0(?:\.0?)?)?\.0?)|(?:0*:)?::1$/i.test(window.location.hostname);
-    return urldebug || hostdebug;
-}
+const isDebug = (() => {
+    const STORAGE_KEY = '__APP_RUNTIME_DEBUG__';
+    const { hostname, search } = window.location;
+    const urlParams = new URLSearchParams(search);
+
+    // 本地环境识别
+    const isLocal = /^(localhost|127\.0\.0\.1|::1|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|10\.)/i.test(hostname);
+
+    // URL 指令解析
+    const debugValue = urlParams.get('debug');
+
+    // 显式开启
+    const explicitOn = ['1', 'true', 'dev', 'admin'].includes(debugValue);
+
+    // 显式关闭
+    const explicitOff = debugValue === 'false' || debugValue === '0' || (urlParams.has('debug') && !explicitOn);
+
+    // 状态同步与持久化
+    let isDebugActive = false;
+    if (explicitOn) {
+        isDebugActive = true;
+        try { sessionStorage.setItem(STORAGE_KEY, '1'); } catch (e) { }
+    } else if (explicitOff) {
+        isDebugActive = false;
+        try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) { }
+    } else {
+        // 回退到本地检测或 Session 记忆
+        isDebugActive = isLocal || sessionStorage.getItem(STORAGE_KEY) === '1';
+    }
+
+    return () => isDebugActive;
+})();
 
 /**
  * 判断访问设备
  * @returns {boolean} true为手机, false为电脑
  */
-function isMobile() {
-    // UA检测
-    const mobileRegex = /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|SymbianOS|Windows Phone|iPad/i;
-    const isMobileUA = mobileRegex.test(navigator.userAgent);
-    // 视口宽度检测
-    const isSmallScreen = window.innerWidth < 768;
-    // 触摸能力检测
-    const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-    return isMobileUA || (hasTouch && isSmallScreen);
-}
+const isMobile = (() => {
+    // 尝试现代 API
+    if (navigator.userAgentData && navigator.userAgentData.mobile !== undefined) {
+        const result = navigator.userAgentData.mobile;
+        return () => result;
+    }
+
+    // 媒体查询判断交互方式
+    const isTouchMode = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+
+    // 新款 iPad 在 Safari 中会自称是 Macintosh (Intel Mac)
+    const isIPadOS = (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    // UA 正则检测
+    const ua = navigator.userAgent || navigator.vendor || (window.opera || '');
+    const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+
+    // 最终结果
+    const finalResult = isTouchMode || isIPadOS || isMobileUA;
+    return () => finalResult;
+})();
 
 /**
  * 网页URL参数获取
