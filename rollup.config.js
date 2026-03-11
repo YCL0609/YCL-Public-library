@@ -1,4 +1,5 @@
 import terser from '@rollup/plugin-terser';
+
 const TEMP_GLOBAL_NAME = '__YCL_GLOBAL_EXPORTS__';
 
 // Banner 文字
@@ -22,39 +23,26 @@ export default [
     input: 'src/index.umd.js',
     output: [
       {
-        file: 'dist/function.umd.js',
-        format: 'umd',
-        name: TEMP_GLOBAL_NAME,
-        exports: 'named',
-        banner: bannerText,
-        footer: umdFooter,
-        indent: true
-      },
-      {
         file: 'dist/function.umd.min.js',
         format: 'umd',
         name: TEMP_GLOBAL_NAME,
         exports: 'named',
         banner: bannerText,
         footer: umdFooter,
+        sourcemap: true,
         plugins: [terserPlugin]
       }
     ]
   },
-
   // --- ESM 格式 ---
   {
     input: 'src/index.esm.js',
     output: [
       {
-        file: 'dist/function.esm.js',
-        format: 'esm',
-        banner: bannerText
-      },
-      {
         file: 'dist/function.esm.min.js',
         format: 'esm',
         banner: bannerText,
+        sourcemap: true,
         plugins: [terserPlugin]
       }
     ]

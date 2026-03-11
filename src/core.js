@@ -1,5 +1,5 @@
 /**
- * 检查是否处于调试模式
+ * 检查是否处于调试模式 (Chromium 49+ / Gecko 44+)
  * @returns {boolean} 是否处于调试模式
  */
 export const isDebug = (() => {
@@ -7,36 +7,36 @@ export const isDebug = (() => {
     const { hostname, search } = window.location;
     const urlParams = new URLSearchParams(search);
 
-    // 本地环境识别
-    const isLocal = /^(localhost|127\.0\.0\.1|::1|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|10\.)/i.test(hostname);
+    // 1. 环境判断：增加了对 .local 后缀的支持
+    const isLocal = /^(localhost|127\.0\.0\.1|::1|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|10\.)/i.test(hostname) || hostname.endsWith('.local');
 
-    // URL 指令解析
+    // 2. 参数获取：注意 get 返回 null 或 string
     const debugValue = urlParams.get('debug');
 
-    // 显式开启
-    const explicitOn = ['1', 'true', 'dev', 'admin'].includes(debugValue);
+    // 3. 显式开关逻辑优化
+    const explicitOn = ['1', 'true', 'yes', 'on'].includes(debugValue);
+    // 只要有 debug 参数且不是开启指令，或者是明确的关闭指令，就判定为显式关闭
+    const explicitOff = (urlParams.has('debug') && !explicitOn) || ['0', 'false', 'no', 'off'].includes(debugValue);
 
-    // 显式关闭
-    const explicitOff = debugValue === 'false' || debugValue === '0' || (urlParams.has('debug') && !explicitOn);
-
-    // 状态同步与持久化
     let isDebugActive = false;
+
     if (explicitOn) {
         isDebugActive = true;
-        try { sessionStorage.setItem(STORAGE_KEY, '1'); } catch (e) { }
+        sessionStorage.setItem(STORAGE_KEY, '1');
     } else if (explicitOff) {
         isDebugActive = false;
-        try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) { }
+        sessionStorage.removeItem(STORAGE_KEY);
     } else {
-        // 回退到本地检测或 Session 记忆
+        // 回退到 local 判断或 session 记忆
         isDebugActive = isLocal || sessionStorage.getItem(STORAGE_KEY) === '1';
     }
 
+    if (isDebugActive) console.log('%c调试模式已启用', 'color:#7DD3FC;');
     return () => isDebugActive;
 })();
 
 /**
- * 判断访问设备
+ * 判断访问设备 (Chromium 45+ / Gecko 45+)
  * @returns {boolean} true为手机, false为电脑
  */
 export const isMobile = (() => {
@@ -62,13 +62,14 @@ export const isMobile = (() => {
 })();
 
 /**
- * 网页URL参数获取
+ * 网页URL参数获取 (Chromium 60+ / Gecko 55+)
  * @param {string} [name] 不传返回所有值，传入则返回对应值
  * @returns {string|object|undefined} 参数值或所有参数对象，若URL中没有参数返回空对象，当给定参数不存在返回 undefined。
  */
 export function getUrlParams(name) {
     const urlSearch = window.location.search;
     const params = new URLSearchParams(urlSearch);
+    if (typeof name === 'string') name = name.trim();
     if (!name) {
         // 不传 name：返回所有参数的键值对对象
         const allParams = {};
@@ -84,13 +85,41 @@ export function getUrlParams(name) {
 }
 
 /**
- * 生成指定长度的随机字符串
- * @param {number} [length=32] - 随机字符串的长度，默认32位
- * @returns {string} 一个长度为 length 的随机字符串
+ * 生成指定长度的随机字符串 (Chromium 60+ / Gecko 55+)
+ * @param {number} [length=32] - 字符串的长度，默认为 32
+ * @param {Object} [config] - 配置选项
+ * @param {boolean} [config.UpCase=true] - 是否包含大写字母 (A-Z)
+ * @param {boolean} [config.LowCase=true] - 是否包含小写字母 (a-z)
+ * @param {boolean} [config.Number=true] - 是否包含数字 (0-9)
+ * @param {boolean} [config.Symbol=false] - 是否包含特殊符号
+ * @returns {string} 生成的随机字符串。如果所有配置项均为 false，则返回空字符串。
  */
-export function RandomString(length = 32) {
-    const chatr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+export function RandomString(length = 32, config = { UpCase: true, LowCase: true, Number: true, Symbol: false }) {
+    // 合并配置
+    const settings = {
+        UpCase: true,
+        LowCase: true,
+        Number: true,
+        Symbol: false,
+        ...config
+    };
+
+    // 构建字符池
+    let charset = '';
+    if (settings.UpCase) charset += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    if (settings.LowCase) charset += 'abcdefghijklmnopqrstuvwxyz';
+    if (settings.Number) charset += '0123456789';
+    if (settings.Symbol) charset += '!@#$%^&*()_+~`|}{[]:;?><,./-=';
+
+    // 如果配置全为 false, 返回空字符串
+    if (!charset) return '';
+
+    // 随机
     const result = new Array(length);
-    for (let i = 0; i < length; i++) result[i] = chatr.charAt(Math.floor(Math.random() * chatr.length));
+    const charsetLength = charset.length;
+    for (let i = 0; i < length; i++) {
+        result[i] = charset.charAt(Math.floor(Math.random() * charsetLength));
+    }
+
     return result.join('');
 }

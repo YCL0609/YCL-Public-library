@@ -1,5 +1,5 @@
 /**
- * 异步加载资源函数
+ * 异步加载资源函数 (Chromium 61+ / Gecko 60+)
  * @param {string} url 资源路径
  * @param {string} type 资源类型 ('js' 或 'css')
  * @param {boolean} [isModule=false] js资源是否为ES module
@@ -34,78 +34,46 @@ export function loadExternalResource(url, type, isModule = false, isasync = fals
 }
 
 /**
- * 测试并选择最快的服务器
+ * 测试并选择最快的服务器 (Chromium 66+ / Gecko 57+)
  * @param {string[]} TestURLs 需要测试的服务器 URL 数组
- * @param {boolean} [isDebug=false] 调试模式：输出详细结果到控制台。
- * @returns {Promise<object[]>} 一个对象数组，包含每个服务器的 URL、耗时、是否出错、出错信息、是否最快等信息。
+ * @param {boolean} [isDebug=false] 调试模式：输出详细结果到控制台
+ * @returns {Promise<object[]>} 按响应速度排序的数组，每个对象包含可用服务器的URL和耗时
  */
 export async function ServerChoose(TestURLs, isDebug = false) {
-    if (!Array.isArray(TestURLs) || TestURLs.length === 0) {
-        if (isDebug) console.warn("TestURLs 数组为空或无效。");
-        return [];
-    }
-    const TIMEOUT_MS = 3000;
+    if (!Array.isArray(TestURLs) || TestURLs.length === 0) return [];
+
+    const TIMEOUT = 3000;
+
     const results = await Promise.all(
-        TestURLs.map(async (url, index) => {
+        TestURLs.map(async (url) => {
             const controller = new AbortController();
             const start = performance.now();
-            let timeoutId;
-            const timeoutPromise = new Promise((_, reject) => {
-                timeoutId = setTimeout(() => {
-                    controller.abort();
-                    reject(new Error(`Timeout after ${TIMEOUT_MS}ms`));
-                }, TIMEOUT_MS);
-            });
+            const timeoutId = setTimeout(() => controller.abort(), TIMEOUT);
 
             try {
-                const testUrl = `${url.endsWith('/') ? url : url + '/'}test.bin`;
-                const fetchPromise = fetch(testUrl, { signal: controller.signal });
-                const response = await Promise.race([fetchPromise, timeoutPromise]);
+                const separator = url.includes('?') ? '&' : '?';
+                const testUrl = `${url}${separator}nocf=1`;
+                // 测试服务器
+                const response = await fetch(testUrl, {
+                    method: 'HEAD',
+                    signal: controller.signal,
+                });
                 clearTimeout(timeoutId);
-                if (!response.ok) {
-                    throw new Error(`HTTP Error: ${response.status} ${response.statusText || ''}`);
-                }
-                await response.arrayBuffer();
-                return { url, elapsedTime: performance.now() - start, isError: false, error: null, index };
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return { url, elapsedTime: performance.now() - start, }
             } catch (error) {
                 clearTimeout(timeoutId);
-                const end = performance.now();
-                return {
-                    url,
-                    elapsedTime: end - start,
-                    isError: true,
-                    error: error.message || error.toString(),
-                    index
-                };
+                console.error(error);
+                return { url, elapsedTime: -1 };
             }
         })
     );
-    const validResults = results.filter(r => !r.isError);
-    const minElapsedTime = validResults.length > 0
-        ? Math.min(...validResults.map(r => r.elapsedTime))
-        : Infinity;
-    const finalResults = results.map(result => ({
-        url: result.url,
-        elapsedTime: Number(result.elapsedTime.toFixed(2)),
-        isError: result.isError,
-        errorMessage: result.error,
-        isFastest: !result.isError && result.elapsedTime === minElapsedTime,
-    }));
-    if (isDebug) {
-        finalResults.forEach(e => {
-            const timeColor = e.isFastest ? '#00ff7f' : (e.elapsedTime < 1000 ? '#ffff00' : '#ffffff');
-            const errorColor = e.isError ? '#ff4500' : '#32cd32';
-            console.log(
-                `%c[${e.isFastest ? 'FASTEST' : 'NORMAL'}] %cURL: ${e.url} | %c耗时: ${e.elapsedTime}ms | %c出错: ${e.isError}`,
-                `font-weight: bold; color: ${e.isFastest ? '#00ff7f' : '#1e90ff'}`,
-                'color: #ffffff',
-                `color: ${timeColor}; font-weight: bold;`,
-                `color: ${errorColor}; font-weight: bold;`
-            );
-            if (e.isError) {
-                console.log(`%c错误信息: ${e.errorMessage}`, 'color:red');
-            }
-        });
-    }
-    return finalResults;
+
+    // 过滤掉所有报错/超时的节点,并按耗时升序排列
+    const sorted = results
+        .filter(r => r.elapsedTime > -1)
+        .sort((a, b) => a.elapsedTime - b.elapsedTime);
+
+    if (isDebug) results.forEach(e => console.log(`URL: ${e.url} | 耗时: ${e.elapsedTime}ms`));
+    return sorted;
 }

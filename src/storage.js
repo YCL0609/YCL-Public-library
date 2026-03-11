@@ -1,7 +1,6 @@
-
 /**
  * @class IndexedDBControl
- * 基于 Promise 封装的 IndexedDB 数据库操作静态类。
+ * 基于 Promise 封装的 IndexedDB 数据库操作静态类 (Chromium 74+ / Gecko 90+)
  */
 export class IndexedDBControl {
     static #dbCache = new Map();
