@@ -1,15 +1,10 @@
 import terser from '@rollup/plugin-terser';
 
-const TEMP_GLOBAL_NAME = '__YCL_GLOBAL_EXPORTS__';
-
 // Banner 文字
 const bannerText = `/*!
  * YCL public function Library by @YCL with MIT License
  * Built: ${new Date().toISOString().slice(0, 10)}
  */`;
-
-// UMD footer 代码
-const umdFooter = `(function(g,n){var e=g[n];if(!e)return;for(var k in e){if(Object.prototype.hasOwnProperty.call(e,k)){g[k]=e[k]}}try{delete g[n]}catch(x){g[n]=void 0}})(typeof self!=='undefined'?self:(typeof window!=='undefined'?window:global),"${TEMP_GLOBAL_NAME}")`;
 
 // 压缩插件配置
 const terserPlugin = terser({
@@ -25,10 +20,9 @@ export default [
       {
         file: 'dist/function.umd.min.js',
         format: 'umd',
-        name: TEMP_GLOBAL_NAME,
-        exports: 'named',
+        exports: 'default',
+        name: 'YclUtils',
         banner: bannerText,
-        footer: umdFooter,
         sourcemap: true,
         plugins: [terserPlugin]
       }

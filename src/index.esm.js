@@ -1,4 +1,16 @@
-export { isDebug, isMobile, getUrlParams, RandomString } from './core.js';
-export { loadExternalResource, ServerChoose } from './net.js';
-export { IndexedDBControl } from './storage.js';
-export { DbgTimmer } from './debug.js';
+import * as core from './core.js';
+import * as net from './net.js';
+import { IndexedDBControl } from './storage.js';
+import { DbgTimmer } from './debug.js';
+
+// Tree-shaking 支持
+export * from './core.js';
+export * from './net.js';
+export { IndexedDBControl, DbgTimmer };
+
+export default Object.freeze({
+    ...core,
+    ...net,
+    IndexedDBControl,
+    DbgTimmer
+});

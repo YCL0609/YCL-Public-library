@@ -31,7 +31,6 @@ export const isDebug = (() => {
         isDebugActive = isLocal || sessionStorage.getItem(STORAGE_KEY) === '1';
     }
 
-    if (isDebugActive) console.log('%c调试模式已启用', 'color:#7DD3FC;');
     return () => isDebugActive;
 })();
 
